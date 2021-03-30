@@ -13,6 +13,9 @@ library(qgraph)
 library(igraph)
 library(miscTools)
 library(tidyverse)
+library(data.table)
+library(sjmisc)
+library(dplyr)
 
 #Generate data
 set.seed(128937)
@@ -216,6 +219,83 @@ diff_df <- function(file_name, rep, nds, per, n){
 }
 grid <- expand.grid(file_name = file_name, rep = rep, nds = nds, 
                     per = per, n = n, 
-                    stringsAsFactors = TRUE)
+                    stringsAsFactors = FALSE)
 pmap(grid, diff_df)
 
+###Bias code starts here
+
+
+cent_data <- as.data.frame(matrix(0, ncol = 57))
+for(e in 1:length(file_name)){
+  for(b in 1:length(nds)){
+    for(c in 1:length(per)){
+      for(d in 1:length(n)){
+          for(f in length(rep)){
+             
+             condition <- read.csv(file <- paste0("D:\\Lindley Backup\\Thesis\\data\\Condition_", file_name[e], "\\", f, "-", b, "-", c, "-", d, "-", file_name[e], ".csv"))
+             if(file_name[e] == "eigen"){
+               condition_data <- as.data.frame(condition$vector)
+             } else {
+               condition_data <- as.data.frame(condition)
+             }
+             for(i in 1:nrow(condition_data)){
+                cent <- as.numeric(condition_data[i,])
+                central <- append(central, cent, after = length(central))
+                 } 
+             condition_df <- data.frame(file_name = file_name[e], rep = f, nds = b, per = c, n = d)
+             central_df <- as.data.frame(matrix(data = central, nrow = 1))
+             data_c <- cbind(condition_df, central_df)
+             cent_data <- rbindFill(cent_data, data_c)
+          }
+        }
+      }
+    }
+  }
+  
+
+write.csv(cent_data, file <- "D:\\Lindley Backup\\Thesis\\data\\c-cent.csv")
+
+###Take two
+
+cent_data_2 <- as.data.frame(matrix(ncol = 7))
+x <- c("file_name", "rep", "nds", "per", "n", "x", "V2")
+colnames(cent_data_2) <- x
+for(e in 1:length(file_name)){
+  for(b in 1:length(nds)){
+    for(c in 1:length(per)){
+      for(d in 1:length(n)){
+        for(f in 1:length(rep)){
+          
+          condition <- read.csv(file <- paste0("D:\\Lindley Backup\\Thesis\\data\\Condition_", file_name[e], "\\", f, "-", b, "-", c, "-", d, "-", file_name[e], ".csv"))
+          if(file_name[e] == "eigen"){
+            condition_data <- as.data.frame(condition$vector)
+          } else{
+            condition_data <- as.data.frame(condition)
+          }
+          for(i in 1:nrow(condition_data)){
+            cent <- as.numeric(condition_data[i,])
+            condition_data[i,2] <- as.numeric(i)
+          } 
+          condition_df <- data.frame(file_name = file_name[e], rep = as.numeric(f),
+                                     nds = as.numeric(b), per = as.numeric(c), 
+                                     n = as.numeric(d)) %>%
+             slice(rep(1:n(), each = nrow(condition_data)))
+          data_c <- cbind(condition_df, condition_data)
+          data_c_names <- colnames(data_c)
+          cent_names <- colnames(cent_data_2)
+          common_names <- intersect(data_c_names, cent_names)
+          cent_data_2 <- rbind(cent_data_2[common_names], data_c[common_names])
+        }
+      }
+    }
+  }
+}
+
+write.csv(cent_data_2, file <- "D:\\Lindley Backup\\Thesis\\data\\c-cent.csv")
+
+
+
+central <- c()
+central_df <- data.frame(matrix(0, nrow = 1))
+
+parameter <- read.csv(file <- paste0("D:\\Lindley Backup\\Thesis\\data\\Parameter_", centrality, "\\", 1, "-", nds, "-", per, "-", centrality, ".csv"))
