@@ -16,9 +16,16 @@ library(tidyverse)
 library(data.table)
 library(sjmisc)
 library(dplyr)
+library(lme4)
+library(gtools)
+library(plyr)
+#install.packages("MuMIn")
+library(MuMIn)
 
-#Generate data
+#Generate true data
+
 set.seed(128937)
+
 #tic("parameter_set")
 for(rep in 1:1){
   for(a in 1:length(nodes)){
@@ -82,6 +89,7 @@ correct.covariance <- function(the.data, a, b) {
 
 #run_times <- data.frame("Nodes", "Percentage", "Sample_Size", "Runtime")
 con_kappa <- data.frame("Nodes", "Percentage", "Sample_Size", "Condition_number")
+
 ##Run conditions
 set.seed(298438238)
 for(rep in 1:500){
@@ -143,6 +151,8 @@ for (a in 1:nrow(sym)) {
 #I'm worried about the other measures, so I'm just going to rerun
 #everything
 
+###Ignore this
+
 for(rep in 1:500){
   for(a in 1:length(nodes)){
     for(b in 1:length(percentages)){
@@ -190,6 +200,127 @@ for(rep in 1:500){
   }
 }
 
+###And this
+
+for(rep in 1:500){
+  for(a in 1:length(nodes)){
+    for(b in 1:length(percentages)){
+      for(c in 1:length(N.vals)){
+        norm_data <- read.csv(file = paste0("D:\\Lindley Backup\\Thesis\\data\\Parameter_Norm\\", 1, "-", a, "-", b, "-norm.csv"), header = TRUE, stringsAsFactors = FALSE)
+        nonnorm_data <- exp(norm_data)
+        cor.npn  <- read.csv(file = paste0("D:\\Lindley Backup\\Thesis\\data\\Parameter_CorNPN\\", 1, "-", a, "-", b, "-cor_npn.csv"), header = TRUE, stringsAsFactors = FALSE)
+        roundCorr <- round(cor.npn, 0)
+        rownames(cor.npn) <- colnames(cor.npn)
+        Graph_lasso <- qgraph(cor.npn, graph = "glasso", layout = "spring",
+                              sampleSize = nrow(nonnorm_data))
+        graph <- as.igraph(Graph_lasso)
+        p_centrality <- centrality(Graph_lasso, 
+                                   weighted = FALSE, signed = TRUE)
+        eigen_cent <- eigen_centrality(graph, directed = FALSE, scale = TRUE)
+        p_degree <- p_centrality[["OutDegree"]]
+        p_between <- p_centrality[["Betweenness"]]
+        p_close <- p_centrality[["Closeness"]]
+        p_eigen <- eigen_cent$vector
+        write.csv(p_degree, file = paste0("D:\\Lindley Backup\\Thesis\\data\\Parameter_degree\\", rep, "-", a, "-", b, "-degree.csv"), row.names = FALSE)
+        write.csv(p_close, file = paste0("D:\\Lindley Backup\\Thesis\\data\\Parameter_close\\", rep, "-", a, "-", b, "-close.csv"), row.names = FALSE)
+        write.csv(p_between, file = paste0("D:\\Lindley Backup\\Thesis\\data\\Parameter_between\\", rep, "-", a, "-", b, "-between.csv"), row.names = FALSE)
+        write.csv(p_eigen, file = paste0("D:\\Lindley Backup\\Thesis\\data\\Parameter_eigen\\", rep, "-", a, "-", b, "-eigen.csv"), row.names = FALSE)
+        #condition
+        con_nonnorm_data <- read.csv(file = paste0("D:\\Lindley Backup\\Thesis\\data\\Condition_NonNorm\\", rep, "-", a, "-", b, "-", c, "-cnonnorm.csv"), header = TRUE, stringsAsFactors = FALSE)
+        con_nonnormal_corr <- read.csv(file = paste0("D:\\Lindley Backup\\Thesis\\data\\Condition_CorNonnormal\\", rep, "-", a, "-", b, "-", c, "-cor_non.csv"), header = TRUE, stringsAsFactors = FALSE)
+        rownames(con_nonnormal_corr) <- colnames(con_nonnormal_corr)
+        con_Graph_lasso <- qgraph(con_nonnormal_corr, graph = "glasso", layout = "spring",
+                                  sampleSize = nrow(nonnorm_data))
+        c_graph <- as.igraph(con_Graph_lasso)
+        c_centrality <- centrality(con_Graph_lasso, 
+                                   weighted = FALSE, signed = TRUE)
+        c_eigen_cent <- eigen_centrality(c_graph, directed = FALSE, scale = TRUE)
+        c_degree <- c_centrality[["OutDegree"]]
+        c_between <- c_centrality[["Betweenness"]]
+        c_close <- c_centrality[["Closeness"]]
+        c_eigen <- c_eigen_cent$vector
+        write.csv(c_degree, file = paste0("D:\\Lindley Backup\\Thesis\\data\\Condition_degree\\", rep, "-", a, "-", b, "-", c,  "-degree.csv"), row.names = FALSE)
+        write.csv(c_close, file = paste0("D:\\Lindley Backup\\Thesis\\data\\Condition_close\\", rep, "-", a, "-", b, "-", c, "-close.csv"), row.names = FALSE)
+        write.csv(c_between, file = paste0("D:\\Lindley Backup\\Thesis\\data\\Condition_between\\", rep, "-", a, "-", b, "-", c, "-between.csv"), row.names = FALSE)
+        write.csv(c_eigen, file = paste0("D:\\Lindley Backup\\Thesis\\data\\Condition_eigen\\", rep, "-", a, "-", b, "-", c, "eigen.csv"), row.names = FALSE)
+        
+      }
+    }
+  }
+}
+
+####Here's the code to get the centrality measures
+
+for(rep in 1:500){
+  for(a in 1:length(nodes)){
+    for(b in 1:length(percentages)){
+      for(c in 1:length(N.vals)){
+        #norm_data <- read.csv(file = paste0("D:\\Lindley Backup\\Thesis\\data\\Parameter_Norm\\", 1, "-", a, "-", b, "-norm.csv"), header = TRUE, stringsAsFactors = FALSE)
+        #nonnorm_data <- exp(norm_data)
+        #cor.npn  <- read.csv(file = paste0("D:\\Lindley Backup\\Thesis\\data\\Parameter_CorNPN\\", 1, "-", a, "-", b, "-cor_npn.csv"), header = TRUE, stringsAsFactors = FALSE)
+       # roundCorr <- round(cor.npn, 0)
+        #rownames(cor.npn) <- colnames(cor.npn)
+      #  Graph_lasso <- qgraph(cor.npn, graph = "glasso", layout = "spring",
+                        #      sampleSize = nrow(nonnorm_data))
+       # graph <- as.igraph(Graph_lasso)
+      #  E(graph)$weight <- NULL
+       # p_centrality <- centrality(Graph_lasso, 
+      #                             weighted = FALSE, signed = TRUE)
+       # eigen_cent <- eigen_centrality(graph, directed = FALSE, scale = TRUE)
+      #  p_degree <- p_centrality[["OutDegree"]]
+       # p_between <- p_centrality[["Betweenness"]]
+      #  p_close <- p_centrality[["Closeness"]]
+       # p_eigen <- eigen_cent$vector
+        #write.csv(p_degree, file = paste0("D:\\Lindley Backup\\Thesis\\data\\Parameter_degree\\", rep, "-", a, "-", b, "-degree.csv"), row.names = FALSE)
+        #write.csv(p_close, file = paste0("D:\\Lindley Backup\\Thesis\\data\\Parameter_close\\", rep, "-", a, "-", b, "-close.csv"), row.names = FALSE)
+        #write.csv(p_between, file = paste0("D:\\Lindley Backup\\Thesis\\data\\Parameter_between\\", rep, "-", a, "-", b, "-between.csv"), row.names = FALSE)
+        #write.csv(p_eigen, file = paste0("D:\\Lindley Backup\\Thesis\\data\\Parameter_eigen\\", rep, "-", a, "-", b, "-eigen.csv"), row.names = FALSE)
+        #condition
+        con_nonnorm_data <- read.csv(file = paste0("D:\\Lindley Backup\\Thesis\\data\\Condition_NonNorm\\", rep, "-", a, "-", b, "-", c, "-cnonnorm.csv"), header = TRUE, stringsAsFactors = FALSE)
+        con_nonnormal_corr <- read.csv(file = paste0("D:\\Lindley Backup\\Thesis\\data\\Condition_CorNonnormal\\", rep, "-", a, "-", b, "-", c, "-cor_non.csv"), header = TRUE, stringsAsFactors = FALSE)
+        rownames(con_nonnormal_corr) <- colnames(con_nonnormal_corr)
+        con_Graph_lasso <- qgraph(con_nonnormal_corr, graph = "glasso", layout = "spring",
+                                  sampleSize = nrow(con_nonnorm_data))
+        c_graph <- as.igraph(con_Graph_lasso)
+        c_centrality <- centrality(con_Graph_lasso, 
+                                   weighted = FALSE, signed = TRUE)
+        c_eigen_cent <- eigen_centrality(c_graph, directed = FALSE, scale = TRUE)
+        c_degree <- c_centrality[["OutDegree"]]
+        c_between <- c_centrality[["Betweenness"]]
+        c_close <- c_centrality[["Closeness"]]
+        c_eigen <- c_eigen_cent$vector
+        write.csv(c_degree, file = paste0("D:\\Lindley Backup\\Thesis\\data\\Condition_degree\\", rep, "-", a, "-", b, "-", c,  "-degree.csv"), row.names = FALSE)
+        write.csv(c_close, file = paste0("D:\\Lindley Backup\\Thesis\\data\\Condition_close\\", rep, "-", a, "-", b, "-", c, "-close.csv"), row.names = FALSE)
+        write.csv(c_between, file = paste0("D:\\Lindley Backup\\Thesis\\data\\Condition_between\\", rep, "-", a, "-", b, "-", c, "-between.csv"), row.names = FALSE)
+        write.csv(c_eigen, file = paste0("D:\\Lindley Backup\\Thesis\\data\\Condition_eigen\\", rep, "-", a, "-", b, "-", c, "-eigen.csv"), row.names = FALSE)
+      }
+    }
+  }
+}
+
+for(a in 1:length(nodes)){
+  for(b in 1:length(percentages)){
+      norm_data <- read.csv(file = paste0("D:\\Lindley Backup\\Thesis\\data\\Parameter_Norm\\", 1, "-", a, "-", b, "-norm.csv"), header = TRUE, stringsAsFactors = FALSE)
+      nonnorm_data <- exp(norm_data)
+      cor.npn  <- read.csv(file = paste0("D:\\Lindley Backup\\Thesis\\data\\Parameter_CorNPN\\", 1, "-", a, "-", b, "-cor_npn.csv"), header = TRUE, stringsAsFactors = FALSE)
+      roundCorr <- round(cor.npn, 0)
+      rownames(cor.npn) <- colnames(cor.npn)
+      Graph_lasso <- qgraph(cor.npn, graph = "glasso", layout = "spring",
+            sampleSize = nrow(nonnorm_data))
+      graph <- as.igraph(Graph_lasso)
+      p_centrality <- centrality(Graph_lasso, 
+                                 weighted = FALSE, signed = TRUE)
+      eigen_cent <- eigen_centrality(graph, directed = FALSE, scale = TRUE)
+      p_degree <- p_centrality[["OutDegree"]]
+      p_between <- p_centrality[["Betweenness"]]
+      p_close <- p_centrality[["Closeness"]]
+      p_eigen <- eigen_cent$vector
+      write.csv(p_degree, file = paste0("D:\\Lindley Backup\\Thesis\\data\\Parameter_degree\\", rep, "-", a, "-", b, "-degree.csv"), row.names = FALSE)
+      write.csv(p_close, file = paste0("D:\\Lindley Backup\\Thesis\\data\\Parameter_close\\", rep, "-", a, "-", b, "-close.csv"), row.names = FALSE)
+      write.csv(p_between, file = paste0("D:\\Lindley Backup\\Thesis\\data\\Parameter_between\\", rep, "-", a, "-", b, "-between.csv"), row.names = FALSE)
+      write.csv(p_eigen, file = paste0("D:\\Lindley Backup\\Thesis\\data\\Parameter_eigen\\", rep, "-", a, "-", b, "-eigen.csv"), row.names = FALSE)
+  }
+}
 #write.csv(run_times, "G:\\My Drive\\Thesis\\Data\\runtimes.csv")
 write.csv(con_kappa, "G:\\My Drive\\Thesis\\Data\\kappa.csv")
 
@@ -202,60 +333,59 @@ nds <- seq(1, 5, by = 1)
 per <- seq(1, 4, by = 1)
 n <- seq(1, 4, by = 1)
 
-###Write a function to compare results
+###Write a function to compare results-I'm going to redo this.
 
-diff_df <- function(file_name, rep, nds, per, n){                                                                                          
-         parameter <- read.csv(file <- paste0("D:\\Lindley Backup\\Thesis\\data\\Parameter_", file_name, "\\", 1, "-", nds, "-", per, "-", file_name, ".csv"))
-         condition <- read.csv(file <- paste0("D:\\Lindley Backup\\Thesis\\data\\Condition_", file_name, "\\", rep, "-", nds, "-", per, "-", n, "-", file_name, ".csv"))
-         diff <- as.data.frame(matrix(0, ncol = ncol(parameter), nrow = nrow(parameter)))
-           for(k in 1:nrow(parameter)){
-             for(m in 1:ncol(parameter)){
-               diff_value <- parameter[k,m] - condition[k,m]
-               diff[k,m] <- diff_value
-           }
-           }
-         write.csv(diff, file <- paste0("D:\\Lindley Backup\\Thesis\\data\\Diff_", file_name, "\\", rep, "-", nds, "-", per, "-", n, "-", file_name, ".csv"))
+#diff_df <- function(file_name, rep, nds, per, n){                                                                                          
+ #        parameter <- read.csv(file <- paste0("D:\\Lindley Backup\\Thesis\\data\\Parameter_", file_name, "\\", 1, "-", nds, "-", per, "-", file_name, ".csv"))
+  #       condition <- read.csv(file <- paste0("D:\\Lindley Backup\\Thesis\\data\\Condition_", file_name, "\\", rep, "-", nds, "-", per, "-", n, "-", file_name, ".csv"))
+   #      diff <- as.data.frame(matrix(0, ncol = ncol(parameter), nrow = nrow(parameter)))
+    #       for(k in 1:nrow(parameter)){
+     #        for(m in 1:ncol(parameter)){
+      #         diff_value <- parameter[k,m] - condition[k,m]
+       #        diff[k,m] <- diff_value
+       #    }
+        #   }
+         #write.csv(diff, file <- paste0("D:\\Lindley Backup\\Thesis\\data\\Diff_", file_name, "\\", rep, "-", nds, "-", per, "-", n, "-", file_name, ".csv"))
 
-}
-grid <- expand.grid(file_name = file_name, rep = rep, nds = nds, 
-                    per = per, n = n, 
-                    stringsAsFactors = FALSE)
-pmap(grid, diff_df)
+#}
+#grid <- expand.grid(file_name = file_name, rep = rep, nds = nds, 
+ #                   per = per, n = n, 
+  #                  stringsAsFactors = FALSE)
+#pmap(grid, diff_df)
 
-###Bias code starts here
+###Analysis code starts here
 
 
-cent_data <- as.data.frame(matrix(0, ncol = 57))
-for(e in 1:length(file_name)){
-  for(b in 1:length(nds)){
-    for(c in 1:length(per)){
-      for(d in 1:length(n)){
-          for(f in length(rep)){
-             
-             condition <- read.csv(file <- paste0("D:\\Lindley Backup\\Thesis\\data\\Condition_", file_name[e], "\\", f, "-", b, "-", c, "-", d, "-", file_name[e], ".csv"))
-             if(file_name[e] == "eigen"){
-               condition_data <- as.data.frame(condition$vector)
-             } else {
-               condition_data <- as.data.frame(condition)
-             }
-             for(i in 1:nrow(condition_data)){
-                cent <- as.numeric(condition_data[i,])
-                central <- append(central, cent, after = length(central))
-                 } 
-             condition_df <- data.frame(file_name = file_name[e], rep = f, nds = b, per = c, n = d)
-             central_df <- as.data.frame(matrix(data = central, nrow = 1))
-             data_c <- cbind(condition_df, central_df)
-             cent_data <- rbindFill(cent_data, data_c)
-          }
-        }
-      }
-    }
-  }
+#cent_data <- as.data.frame(matrix(0, ncol = 57))
+#for(e in 1:length(file_name)){
+ # for(b in 1:length(nds)){
+  #  for(c in 1:length(per)){
+   #   for(d in 1:length(n)){
+    #      for(f in length(rep)){
+     #        condition <- read.csv(file <- paste0("D:\\Lindley Backup\\Thesis\\data\\Condition_", file_name[e], "\\", f, "-", b, "-", c, "-", d, "-", file_name[e], ".csv"))
+      #       if(file_name[e] == "eigen"){
+       #        condition_data <- as.data.frame(condition$vector)
+        #     } else {
+         #      condition_data <- as.data.frame(condition)
+          #   }
+            # for(i in 1:nrow(condition_data)){
+             #   cent <- as.numeric(condition_data[i,])
+              #  central <- append(central, cent, after = length(central))
+               #  } 
+#             condition_df <- data.frame(file_name = file_name[e], rep = f, nds = b, per = c, n = d)
+ #            central_df <- as.data.frame(matrix(data = central, nrow = 1))
+  #           data_c <- cbind(condition_df, central_df)
+   #          cent_data <- rbindFill(cent_data, data_c)
+    #      }
+    #    }
+     # }
+    #}
+#  }
   
 
-write.csv(cent_data, file <- "D:\\Lindley Backup\\Thesis\\data\\c-cent.csv")
+# write.csv(cent_data, file <- "D:\\Lindley Backup\\Thesis\\data\\c-cent.csv")
 
-###Take two
+###Take two: this code creates a master dataframe of all of the centrality measures.
 
 cent_data_2 <- as.data.frame(matrix(ncol = 7))
 x <- c("file_name", "rep", "nds", "per", "n", "x", "V2")
@@ -265,17 +395,12 @@ for(e in 1:length(file_name)){
     for(c in 1:length(per)){
       for(d in 1:length(n)){
         for(f in 1:length(rep)){
-          
           condition <- read.csv(file <- paste0("D:\\Lindley Backup\\Thesis\\data\\Condition_", file_name[e], "\\", f, "-", b, "-", c, "-", d, "-", file_name[e], ".csv"))
-          if(file_name[e] == "eigen"){
-            condition_data <- as.data.frame(condition$vector)
-          } else{
-            condition_data <- as.data.frame(condition)
-          }
+          condition_data <- condition
           for(i in 1:nrow(condition_data)){
             cent <- as.numeric(condition_data[i,])
             condition_data[i,2] <- as.numeric(i)
-          } 
+           }
           condition_df <- data.frame(file_name = file_name[e], rep = as.numeric(f),
                                      nds = as.numeric(b), per = as.numeric(c), 
                                      n = as.numeric(d)) %>%
@@ -292,10 +417,239 @@ for(e in 1:length(file_name)){
 }
 
 write.csv(cent_data_2, file <- "D:\\Lindley Backup\\Thesis\\data\\c-cent.csv")
+cent_data_2 <- read.csv("D:\\Lindley Backup\\Thesis\\data\\c-cent.csv", header = TRUE,
+                        stringsAsFactors = FALSE )
+
+###Find the mean across replications for conditions
+mean_con <- cent_data_2 %>% 
+  group_by(nds, per, n, V2, file_name) %>%
+  summarize(mean_c = mean(x, na.rm = TRUE))
+
+###Add new columns to mean_con to prepare for adding values
+#mean_con <- mean_con %>%
+ # add_column(raw_bias = NA,
+  #           relative_bias = NA)
 
 
 
-central <- c()
-central_df <- data.frame(matrix(0, nrow = 1))
+all_parameter <- data.frame(file_name = character(), 
+                            nds = numeric(), per = numeric(),
+                            true_val = numeric(), V2 = numeric())
+###Create a dataframe with corresponding true values.
+for(e in 1:length(file_name)){
+  for(b in 1:length(nds)){
+    for(c in 1:length(per)){
+      parameter <- read.csv(file <- paste0("D:\\Lindley Backup\\Thesis\\data\\Parameter_", file_name[e], "\\", 1, "-", b, "-", c, "-", file_name[e], ".csv"))
+        
+        for(i in 1:nrow(parameter)){
+          parameter[i,2] <- as.numeric(i)
+        }
+      parameter <- parameter %>%
+        rename_all(funs(c("true_val", "V2")))
+      #  parameter <- parameter %>% 
+       # dplyr::rename(
+        #  true_val = x
+        #)
+       
+       parameter_df <- data.frame(file_name = as.character(file_name[e]), 
+                                   nds = as.numeric(b), per = as.numeric(c)) %>%
+          slice(rep(1:n(), each = nrow(parameter)))
+        parameter_df$file_name <- as.character(parameter_df$file_name)
+        data_p <- cbind(parameter_df, parameter)
+        all_parameter <- rbind(all_parameter, data_p)
+      }
+    }
+  }
 
-parameter <- read.csv(file <- paste0("D:\\Lindley Backup\\Thesis\\data\\Parameter_", centrality, "\\", 1, "-", nds, "-", per, "-", centrality, ".csv"))
+##Combine the mean_con and all_parameter dataframes
+mean_con <- full_join(mean_con, all_parameter, by = c("file_name", "nds", "per", "V2"))
+     
+###Add in some missing values
+mean_con$true_val[mean_con$file_name == "eigen" & mean_con$nds == 1 & mean_con$per == 1] <- 1
+mean_con$true_val[mean_con$file_name == "eigen" & mean_con$nds == 2 & mean_con$per == 1] <- 5.500059e-01
+
+
+###Find the raw bias
+rb_frame <- data.frame("nds" = numeric(), "per" = numeric(),"raw_bias" = numeric(),
+                       "n" = numeric(), "V2" = numeric(), "file_name" = character(),
+                       "mean_c" = numeric(), "true_val" = numeric())
+for(e in 1:length(file_name)){
+  for(b in 1:length(nds)){
+    for(c in 1:length(per)){
+      for(d in 1:length(n)){
+        row_select <- mean_con %>% 
+          filter(file_name == file_name[e] &
+                   nds == b &
+                   per == c &
+                   n == d)
+        for(i in 1:nrow(row_select)){
+        row_select <- ungroup(row_select)
+        rb <- row_select$mean_c[i] - row_select$true_val[i]
+        rb_item <- row_select[i,]
+        rb_item$raw_bias <- rb
+        rb_frame <- rbind(rb_frame, rb_item)
+        
+        }
+      }
+    }
+  }
+}
+
+###Join dataframes
+mean_con <- full_join(mean_con, rb_frame, by = c("file_name", "nds", "per", "V2", "n"))
+
+###Fix up the columns
+mean_con <- mean_con %>% 
+  rename(mean_c = mean_c.x,
+         true_val = true_val.x
+)
+mean_con <- subset(mean_con, select = -c(mean_c.y, true_val.y) )
+
+
+###Save mean_con so I don't mess it up
+
+write.csv(mean_con, "C:\\Users\\Owner\\Google Drive\\Thesis\\Thesis\\mean_con.csv")
+mean_con <- read.csv("C:\\Users\\Owner\\Google Drive\\Thesis\\Thesis\\mean_con.csv", header = TRUE,
+                     stringsAsFactors = FALSE)
+
+###Find sd for standardized bias
+
+mean_c <- cent_data_2 %>%
+  group_by(nds, per, n, V2, file_name) %>%
+  summarize(sd_c = sd(x)) %>%
+  ungroup()
+
+
+###Add to mean_con
+mean_con$sd_c <- mean_c$sd_c
+
+###Add standardized bias to mean_con
+mean_con <- mean_con %>%
+  mutate(stnd_bias = raw_bias/sd_c)
+
+###Write file again
+write.csv(mean_con, "C:\\Users\\Owner\\Google Drive\\Thesis\\Thesis\\mean_con.csv")
+
+###Don't need
+###Find relative bias
+rlb_frame <- data.frame("relative_bias" = numeric())
+for(e in 1:length(file_name)){
+  for(b in 1:length(nds)){
+    for(c in 1:length(per)){
+      for(d in 1:length(n)){
+        row_select <- mean_con %>% 
+          filter(file_name == file_name[e] &
+                   nds == b &
+                   per == c &
+                   n == d)
+        for(i in 1:nrow(row_select)){
+          row_select <- ungroup(row_select)
+          rlb <- row_select$raw_bias[i]/row_select$true[i]
+          rlb_item <- row_select[i,]
+          rlb_item$raw_bias <- rlb
+          rlb_frame <- full_join(rlb_frame, rlb_item, by = c("relative_bias"))
+        } 
+      }
+    }
+  }
+}
+
+###Join dataframes
+mean_con <- full_join(mean_con, rlb_frame, by = c("file_name", "nds", "per", "V2", "n"))
+
+
+###Add new columns to mean_con to prepare for adding values
+cent_data_2 <- cent_data_2 %>%
+  add_column(par_val = NA)
+
+###Create a dataframe of differences
+
+###Ignore This
+
+for(e in 1:length(file_name)){
+  for(b in 1:length(nds)){
+    for(c in 1:length(per)){
+      for(d in 1:length(n)){
+        parameter <- read.csv(file <- paste0("D:\\Lindley Backup\\Thesis\\data\\Parameter_", file_name[e], "\\", 1, "-", b, "-", c, "-", d, "-", file_name[e], ".csv"))
+        #parameter %>% 
+         # rename(
+           #  par_val = x
+          #)
+        for(i in 1:nrow(parameter)){
+          parameter_data <- as.numeric(parameter[i,])
+         # parameter_data[i,2] <- as.numeric(i)
+          cent_data_2[cent_data_2$file_name == file_name[e] & cent_data_2$nds == b &
+                        cent_data_2$per == c & cent_data_2$n == d, cent_data_2$V2 == i]$par_val <- parameter_data[i,1]
+        }
+      }
+    }
+  }
+}
+
+###Create dataframe with true values
+cent_data_2 <- full_join(cent_data_2, all_parameter, by = c("file_name", "nds", "per", "V2"))
+
+
+###Now add a difference column and find the difference
+cent_data_2$diff_val <- cent_data_2$x - cent_data_2$true_val
+
+###We need to get the numerical values for the condition variables, so we'll do that here.
+
+cent_data_2 <- cent_data_2 %>%
+  mutate(con_nodes = case_when(
+    nds == '1' ~ 7,
+    nds == '2' ~ 12,
+    nds == '3' ~ 20,
+    nds == '4' ~ 36,
+    nds == '5' ~ 57
+  ))
+
+cent_data_2 <- cent_data_2 %>%
+  mutate(con_per = case_when(
+  per == 1 ~ 0.2,
+  per == 2 ~ 0.4,
+  per == 3 ~ 0.6,
+  per == 4 ~ 0.8
+  ))
+
+cent_data_2 <- cent_data_2 %>%
+  mutate(con_n = case_when(
+    n == 1 ~ 274,
+    n == 2 ~ 802,
+    n == 3 ~ 2654,
+    n == 4 ~ 34653
+  ))
+
+###Also there's an annoying NA first row. Let's get rid of that
+cent_data_2 <- cent_data_2[-1,]
+
+###Time for metamodels!
+
+###Degree metamodel
+degree <- cent_data_2 %>%
+  filter(file_name == "degree")
+degree.model <- lmer(diff_val ~ con_nodes*con_per*con_n + (1 | rep), data = degree)
+
+
+r_degree <- r.squaredGLMM(degree.model)
+
+###Betweenness metamodel
+betweenness <- cent_data_2 %>%
+  filter(file_name == "between")
+Betweenness.model <- lmer(diff_val ~ con_nodes*con_per*con_n + (1 | rep), data = betweenness)
+
+r_between <- r.squaredGLMM(Betweenness.model)
+
+###Closeness metamodel
+closeness <- cent_data_2 %>%
+  filter(file_name == "close")
+closeness.model <- lmer(diff_val ~ con_nodes*con_per*con_n + (1 | rep), data = closeness)
+
+r_close <- r.squaredGLMM(closeness.model)
+
+###Eigenvector metamodel
+eigenvector <- cent_data_2 %>%
+  filter(file_name == "eigen")
+eigen.model <- lmer(diff_val ~ con_nodes*con_per*con_n + (1 | rep), data = eigenvector)
+
+r_eigen <- r.squaredGLMM(eigen.model)
